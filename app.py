@@ -12,9 +12,8 @@ MODEL_PATH = Path(__file__).resolve().parent / "model.joblib"
 # The four input features, in the same order the model was trained on.
 FEATURE_NAMES = ["Sepal Length", "Sepal Width", "Petal Length", "Petal Width"]
 
-# Largest value a 32-bit float can hold (about 3.4e38). The model works
-# with 32-bit floats internally, so a bigger input would become infinity.
-FLOAT32_MAX = float(np.finfo(np.float32).max)
+# Upper limit for any measurement (real Iris values are all under 8 cm).
+MAX_MEASUREMENT_CM = 20.0
 
 # Used when no arguments are given (e.g. a plain `docker run`).
 # This is the first flower in the Iris dataset (a setosa).
@@ -50,17 +49,16 @@ def read_features(args):
         except ValueError:
             fail(f"{name} must be a number, but got '{text}'.")
 
-        # ...a normal one: float() also accepts "nan" and "inf", and huge
-        # values would turn into infinity inside the model...
-        if not math.isfinite(value) or value > FLOAT32_MAX:
-            fail(
-                f"{name} must be a normal number (not nan, inf or too large), "
-                f"but got '{text}'."
-            )
+        # ...a finite one (float() also accepts "nan" and "inf")...
+        if not math.isfinite(value):
+            fail(f"{name} must be a finite number, but got '{text}'.")
 
-        # ...and greater than zero, because it is a length in cm.
-        if value <= 0:
-            fail(f"{name} must be greater than 0, but got {text}.")
+        # ...and a realistic flower measurement: above 0 and at most 20 cm.
+        if value <= 0 or value > MAX_MEASUREMENT_CM:
+            fail(
+                f"{name} must be greater than 0 and at most "
+                f"{MAX_MEASUREMENT_CM:g} cm, but got {value}."
+            )
 
         features.append(value)
 
