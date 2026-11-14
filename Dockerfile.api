@@ -1,0 +1,21 @@
+# Dockerfile.api - image for the FastAPI REST API (Part B)
+
+# 1. Same base image as the CLI image (Python version used for training)
+FROM python:3.13-slim
+
+# 2. Working directory inside the container
+WORKDIR /app
+
+# 3. Dependencies first (layer caching), using the API requirements
+COPY requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+# 4. Trained model + API code
+COPY model.joblib .
+COPY api.py .
+
+# 5. Document the port the API listens on
+EXPOSE 8000
+
+# 6. Start the Uvicorn server; 0.0.0.0 = accept connections from outside the container
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
