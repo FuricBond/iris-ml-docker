@@ -1,3 +1,13 @@
+"""
+train_model.py
+
+Task 1: Trains a Random Forest classifier on the Iris dataset,
+evaluates it on a held-out test set (accuracy + classification report),
+and saves the trained model to model.joblib next to this script.
+
+Run:
+    python train_model.py
+"""
 from pathlib import Path
 
 import joblib
