@@ -1,3 +1,11 @@
+"""
+app.py
+
+Task 2: Loads the trained model (model.joblib) and predicts the Iris species
+for four measurements given as command-line arguments:
+    python app.py SEPAL_LENGTH SEPAL_WIDTH PETAL_LENGTH PETAL_WIDTH
+With no arguments, the default sample 5.1 3.5 1.4 0.2 is used.
+"""
 import math
 import sys
 from pathlib import Path
