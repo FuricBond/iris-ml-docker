@@ -1,0 +1,107 @@
+import math
+import sys
+from pathlib import Path
+
+import joblib
+import numpy as np
+
+# The model file sits next to this script. Building the path from __file__
+# means it is found both locally and inside the Docker container (/app).
+MODEL_PATH = Path(__file__).resolve().parent / "model.joblib"
+
+# The four input features, in the same order the model was trained on.
+FEATURE_NAMES = ["Sepal Length", "Sepal Width", "Petal Length", "Petal Width"]
+
+# Largest value a 32-bit float can hold (about 3.4e38). The model works
+# with 32-bit floats internally, so a bigger input would become infinity.
+FLOAT32_MAX = float(np.finfo(np.float32).max)
+
+# Used when no arguments are given (e.g. a plain `docker run`).
+# This is the first flower in the Iris dataset (a setosa).
+DEFAULT_SAMPLE = ["5.1", "3.5", "1.4", "0.2"]
+
+USAGE = (
+    "Usage:   python app.py SEPAL_LENGTH SEPAL_WIDTH PETAL_LENGTH PETAL_WIDTH\n"
+    "Example: python app.py 6.7 3.0 5.2 2.3\n"
+    "Run with no arguments to use the default sample (5.1 3.5 1.4 0.2)."
+)
+
+
+def fail(message):
+    """Print an error message to stderr and stop with exit code 1."""
+    print(f"Error: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def read_features(args):
+    """Turn the command-line arguments into a list of 4 positive numbers."""
+    # No arguments -> use the default sample.
+    if len(args) == 0:
+        args = DEFAULT_SAMPLE
+    # Anything other than 0 or 4 arguments is a mistake.
+    elif len(args) != 4:
+        fail(f"expected 4 values but got {len(args)}.\n{USAGE}")
+
+    features = []
+    for name, text in zip(FEATURE_NAMES, args):
+        # Each value must be a number...
+        try:
+            value = float(text)
+        except ValueError:
+            fail(f"{name} must be a number, but got '{text}'.")
+
+        # ...a normal one: float() also accepts "nan" and "inf", and huge
+        # values would turn into infinity inside the model...
+        if not math.isfinite(value) or value > FLOAT32_MAX:
+            fail(
+                f"{name} must be a normal number (not nan, inf or too large), "
+                f"but got '{text}'."
+            )
+
+        # ...and greater than zero, because it is a length in cm.
+        if value <= 0:
+            fail(f"{name} must be greater than 0, but got {text}.")
+
+        features.append(value)
+
+    return features
+
+
+def main():
+    # ---------------------------------------------------------------
+    # 1. READ the four input features from the command line
+    # ---------------------------------------------------------------
+    # sys.argv[0] is the script name, so the values start at index 1.
+    features = read_features(sys.argv[1:])
+
+    # ---------------------------------------------------------------
+    # 2. LOAD the trained model
+    # ---------------------------------------------------------------
+    if not MODEL_PATH.is_file():
+        fail(
+            f"model file not found: {MODEL_PATH}\n"
+            "Run 'python train_model.py' first to train and save the model."
+        )
+    model = joblib.load(MODEL_PATH)
+
+    # ---------------------------------------------------------------
+    # 3. PREDICT the species
+    # ---------------------------------------------------------------
+    # scikit-learn expects a 2-D array: one row per flower and one
+    # column per feature. We have one flower, so the shape is (1, 4).
+    X = np.array([features])
+    prediction = model.predict(X)[0]  # e.g. "setosa"
+
+    # ---------------------------------------------------------------
+    # 4. DISPLAY the input values and the predicted species
+    # ---------------------------------------------------------------
+    print("Iris Species Prediction")
+    print("Input:")
+    for name, value in zip(FEATURE_NAMES, features):
+        print(f"  {name:<12} : {value}")
+    print("Prediction:")
+    print(f"  {prediction}")
+
+
+if __name__ == "__main__":
+    main()
